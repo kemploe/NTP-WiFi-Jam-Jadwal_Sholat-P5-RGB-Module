@@ -1,0 +1,11 @@
+
+p5NTPClock
+
+
+#define P_A     5           // pin A    on LED MATRIX is connected to GPIO  5  (D1)
+#define P_B     4           // pin B    on LED MATRIX is connected to GPIO  4  (D2)
+#define P_C     15          // pin C    on LED MATRIX is connected to GPIO  15 (D8)
+#define P_D     12          // pin D    on LED MATRIX is connected to GPIO  12 (D6)
+#define P_E     0           // for 1/32 scan only
+#define P_LAT   16          // pin LAT  on LED MATRIX is connected to GPIO  16 (D0)
+#define P_OE    2           // pin OE   on LED MATRIX is connected to GPIO  2  (D4)

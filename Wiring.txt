@@ -1,5 +1,5 @@
 
-p5NTPClock
+P5-NTP-JS
 
 
 #define P_A     5           // pin A    on LED MATRIX is connected to GPIO  5  (D1)

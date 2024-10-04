@@ -1,4 +1,4 @@
-// NodeMCU ESP8266 - P5 NTP CLOCK
+// NodeMCU ESP8266 - P5 NTP PRAYER/SALAT TIME
 
 #include <ESP8266WiFi.h>
 #include <ezTime.h>
@@ -21,17 +21,25 @@ const char* sketchName = "P5_NTP_JS_FINAL";
 const char* t_zone = "Asia/Jakarta";       // See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 const char* ntp_pool = "id.pool.ntp.org";  // NTP Server pool address
 const int id_kota = 1301;                  // See https://api.myquran.com/v2/sholat/kota/semua
-const int brightness = 30;                 // Display brightness level
+const int brightness = 50;                 // Display brightness level
 String new_hostname = "p5-ntp-js";
 
 // Buffers for string to character conversion from JSON payload
 char b_imsak[10], b_subuh[10], b_terbit[10], b_dhuha[10], b_dzuhur[10], b_ashar[10], b_maghrib[10], b_isya[10];
 
 // day of the week (dow) and it's absolute x position array
+// Bahasa Indonesia
 char dow_matrix[7][10] = { "AHAD", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU" };
 // byte dow_x_pos[7] = {48, 44, 40, 48, 44, 44, 44};
+
+// English
 // char loc_dow_array[7][10] = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
 // byte x_pos[7] = {16, 16, 16, 16, 16, 16, 16};
+
+// Deutsch
+// char loc_dow_array[7][10] = {"SON","MON","DIE","MIT","DON","FRE","SAM"};
+// byte x_pos[7] = {16, 16, 16, 16, 16, 16, 16};
+
 static byte prev_loc_dow = 0;
 
 int prev_hour = -1;
@@ -44,9 +52,9 @@ time_t loc_time;                                           // current & displaye
 Ticker display_ticker;
 
 // NTP Sync definitions
-// NTP Sync Status displayed as clock separator
-#define SYNC_MARGINAL 3600                                 // yellow status if no sync for 1 hour
-#define SYNC_LOST 86400                                    // red status if no sync for 1 day
+// NTP Sync status displayed as clock separator (:)
+#define SYNC_MARGINAL 3600                                 // yellow if no sync for 1 hour
+#define SYNC_LOST 86400                                    // red if no sync for 1 day
 
 // Pin assignment for LED MATRIX
 #define P_A 5                                              // pin A    on LED MATRIX is connected to GPIO   5
@@ -57,6 +65,7 @@ Ticker display_ticker;
 #define P_LAT 16                                           // pin LAT  on LED MATRIX is connected to GPIO  16
 #define P_OE 2                                             // pin OE   on LED MATRIX is connected to GPIO   2
 
+// Display matrix size in pixels
 #define p5_width 64
 #define p5_height 32
 
@@ -68,28 +77,30 @@ uint8_t display_draw_time = 40;                            //30-70 is usually fi
 PxMATRIX p5_display(64, 32, P_LAT, P_OE, P_A, P_B, P_C, P_D);
 
 // COLOR DEFINITION
-uint16_t p5_BLACK = p5_display.color565(0, 0, 0);
-uint16_t p5_WHITE = p5_display.color565(255, 255, 255);
-uint16_t p5_RED = p5_display.color565(255, 0, 0);
-uint16_t p5_DMRED = p5_display.color565(96, 0, 0);
-uint16_t p5_GREEN = p5_display.color565(0, 255, 0);
-uint16_t p5_DMGREEN = p5_display.color565(0, 128, 0);
-uint16_t p5_BLUE = p5_display.color565(0, 0, 255);
-uint16_t p5_YELLOW = p5_display.color565(255, 255, 0);
-uint16_t p5_DMYELLOW = p5_display.color565(255, 255, 0);
-uint16_t p5_CYAN = p5_display.color565(0, 255, 255);
-uint16_t p5_DMCYAN = p5_display.color565(0, 128, 128);
-uint16_t p5_GREY = p5_display.color565(128, 128, 128);
-uint16_t p5_DMGREY = p5_display.color565(96, 96, 96);
-uint16_t p5_MAGENTA = p5_display.color565(255, 0, 255);
+uint16_t p5_BLACK     = p5_display.color565(0, 0, 0);
+uint16_t p5_WHITE     = p5_display.color565(255, 255, 255);
+uint16_t p5_RED       = p5_display.color565(255, 0, 0);
+uint16_t p5_DMRED     = p5_display.color565(96, 0, 0);
+uint16_t p5_GREEN     = p5_display.color565(0, 255, 0);
+uint16_t p5_DMGREEN   = p5_display.color565(0, 128, 0);
+uint16_t p5_BLUE      = p5_display.color565(0, 0, 255);
+uint16_t p5_YELLOW    = p5_display.color565(255, 255, 0);
+uint16_t p5_DMYELLOW  = p5_display.color565(255, 255, 0);
+uint16_t p5_CYAN      = p5_display.color565(0, 255, 255);
+uint16_t p5_DMCYAN    = p5_display.color565(0, 128, 128);
+uint16_t p5_GREY      = p5_display.color565(128, 128, 128);
+uint16_t p5_DMGREY    = p5_display.color565(96, 96, 96);
+uint16_t p5_MAGENTA   = p5_display.color565(255, 0, 255);
 uint16_t p5_DMMAGENTA = p5_display.color565(96, 0, 96);
 
 // DISPLAY_UPDATER FUNCTION
-void display_updater() {
+void display_updater() 
+{
   p5_display.display(display_draw_time);
 }
 
-void display_update_enable(bool is_enable) {
+void display_update_enable(bool is_enable) 
+{
   if (is_enable)
     display_ticker.attach(0.004, display_updater);
   else
@@ -97,33 +108,35 @@ void display_update_enable(bool is_enable) {
 }
 
 // STATIC_DISPLAY FUNCTION
-void static_display() {
+void static_display() 
+{
   p5_display.setFont(&TomThumb);
 
   // display praying time header
   p5_display.setTextSize(1);                               // size 1 == 8 pixels high 6 pixels wide
   p5_display.setTextColor(p5_DMCYAN);
-  p5_display.setCursor(0, 25);                             // start at x=3 y=19, with 8 pixel of spacing
+  p5_display.setCursor(0, 25);                             // start at x=0 y=25, with 8 pixel of spacing
   p5_display.print("S");
 
-  p5_display.setCursor(22, 25);                            // start at x=38 y=19, with 8 pixel of spacing
+  p5_display.setCursor(22, 25);                            // start at x=22 y=25, with 8 pixel of spacing
   p5_display.print("T");
 
-  p5_display.setCursor(44, 25);                            // start at x=3 y=25, with 8 pixel of spacing
+  p5_display.setCursor(44, 25);                            // start at x=44 y=25, with 8 pixel of spacing
   p5_display.print("D");
 
-  p5_display.setCursor(0, 31);                             // start at x=38 y=25, with 8 pixel of spacing
+  p5_display.setCursor(0, 31);                             // start at x=0 y=31, with 8 pixel of spacing
   p5_display.print("A");
 
-  p5_display.setCursor(22, 31);                            // start at x=3 y=31, with 8 pixel of spacing
+  p5_display.setCursor(22, 31);                            // start at x=22 y=31, with 8 pixel of spacing
   p5_display.print("M");
 
-  p5_display.setCursor(44, 31);                            // start at x=38 y=31, with 8 pixel of spacing
+  p5_display.setCursor(44, 31);                            // start at x=44 y=31, with 8 pixel of spacing
   p5_display.print("I");
 }
 
 // NTP_CLOCK FUNCTION
-void ntp_clock() {
+void ntp_clock() 
+{
   // sync time now
   loc_time = my_tz.now();
 
@@ -134,10 +147,10 @@ void ntp_clock() {
   p5_display.setTextSize(2);                               // size 2 == 10 pixels high 8 pixels wide
   p5_display.setTextColor(sync_result);
   p5_display.fillRect(21, 8, 2, 10, p5_BLACK);
-  p5_display.setCursor(21, 18);                            // start at x=21 y=23, with 8 pixel of spacing
+  p5_display.setCursor(21, 18);                            // start at x=21 y=18, with 8 pixel of spacing
   p5_display.print(":");
   p5_display.fillRect(41, 8, 2, 10, p5_BLACK);
-  p5_display.setCursor(41, 18);                            // start at x=41 y=23, with 8 pixel of spacing
+  p5_display.setCursor(41, 18);                            // start at x=41 y=18, with 8 pixel of spacing
   p5_display.print(":");
 
   // display time - second (SS)
@@ -148,7 +161,8 @@ void ntp_clock() {
   p5_display.printf("%02u", second(loc_time));
 
   // display time - minute (MM)
-  if (prev_minute != minute(loc_time)) {
+  if (prev_minute != minute(loc_time)) 
+  {
     prev_minute = minute(loc_time);
     p5_display.fillRect(25, 8, 16, 10, p5_BLACK);
     p5_display.setCursor(25, 18);                          // start at x=25 y=18, with 8 pixel of spacing
@@ -156,14 +170,16 @@ void ntp_clock() {
   }
 
   // display time - hour (HH)
-  if (prev_hour != hour(loc_time)) {
+  if (prev_hour != hour(loc_time)) 
+  {
     prev_hour = hour(loc_time);
     p5_display.fillRect(5, 8, 16, 10, p5_BLACK);
     p5_display.setCursor(5, 18);                           // start at x=5 y=18, with 8 pixel of spacing
     p5_display.printf("%02u", hour(loc_time));
   }
 
-  if (prev_loc_dow != weekday(loc_time)) {
+  if (prev_loc_dow != weekday(loc_time)) 
+  {
     // call jadwal_sholat function every day
     jadwal_sholat();
 
@@ -172,7 +188,7 @@ void ntp_clock() {
     p5_display.setTextSize(1);                             // size 1 == 8 pixels high 6 pixels wide
     p5_display.setTextColor(p5_BLUE);
     p5_display.fillRect(1, 1, 24, 6, p5_BLACK);
-    p5_display.setCursor(1, 6);                            // start at x=39 y=6
+    p5_display.setCursor(1, 6);                            // start at x=1 y=6
     // p5_display.setCursor(dow_x_pos[prev_loc_dow-1], 6); // start at top left, with 8 pixel of spacing
     p5_display.println(dow_matrix[prev_loc_dow - 1]);
 
@@ -180,7 +196,7 @@ void ntp_clock() {
     p5_display.setTextSize(1);                             // size 1 == 8 pixels high 6 pixels wide
     p5_display.setTextColor(p5_DMCYAN);
     p5_display.fillRect(32, 1, 30, 6, p5_BLACK);
-    p5_display.setCursor(32, 6);                           // start at x=2 y=7, with 8 pixel of spacing
+    p5_display.setCursor(32, 6);                           // start at x=22 y=6, with 8 pixel of spacing
     p5_display.printf("%02u/%02u/%02u", day(loc_time), month(loc_time), (year(loc_time) - 2000));
     // p5_display.printf( "%02u/%02u", day(loc_time), month(loc_time) );
 
@@ -214,7 +230,8 @@ void ntp_clock() {
 }
 
 // SCROLL_TEXT FUNCTION (y, delay, text, red color, green color, blue color)
-void scroll_text(uint8_t y_pos, unsigned long scroll_delay, String text, uint8_t R_color, uint8_t G_color, uint8_t B_color) {
+void scroll_text(uint8_t y_pos, unsigned long scroll_delay, String text, uint8_t R_color, uint8_t G_color, uint8_t B_color) 
+{
   uint16_t text_length = text.length() + 12;
   p5_display.setTextWrap(false);                           // we don't wrap text so it scrolls nicely
   p5_display.setFont(NULL);
@@ -223,7 +240,8 @@ void scroll_text(uint8_t y_pos, unsigned long scroll_delay, String text, uint8_t
   p5_display.setTextColor(p5_display.color565(R_color, G_color, B_color));
 
   // Asuming 5 pixel average character width
-  for (int x_pos = p5_width; x_pos > -(p5_width + text_length * 5); x_pos--) {
+  for (int x_pos = p5_width; x_pos > -(p5_width + text_length * 5); x_pos--) 
+  {
     p5_display.setTextColor(p5_display.color565(R_color, G_color, B_color));
     //      p5_display.clearDisplay();
     p5_display.fillRect(0, y_pos, p5_width, 8, p5_BLACK);
@@ -235,7 +253,8 @@ void scroll_text(uint8_t y_pos, unsigned long scroll_delay, String text, uint8_t
 }
 
 // JADWAL_SHOLAT FUNCTION
-void jadwal_sholat() {
+void jadwal_sholat() 
+{
   WiFiClientSecure client;
   client.setInsecure();                                    // use with caution
   client.connect("api.myquran.com", 80);
@@ -277,7 +296,8 @@ void jadwal_sholat() {
   isya.toCharArray(b_isya, 10);
 
   // on JSON deserialization error
-  if (error) {
+  if (error) 
+  {
     Serial.print(F("deserializeJson() failed: "));
     Serial.println(error.c_str());
     return;
@@ -297,7 +317,8 @@ void ntp_status()
 }
 
 // SETUP
-void setup() {
+void setup() 
+{
   // initializing Serial Port
   Serial.begin(115200);  // set serial port speed
   delay(1000);           // 3 seconds delay
@@ -379,14 +400,15 @@ void setup() {
   my_tz.setLocation(t_zone);
 
   // display scrolling text
-  scroll_text(12, 60, "This is NTP based Salat Time on P5 Display Module", 32, 128, 128);
+  scroll_text(12, 60, "This is NTP based Prayer/Salat Time on P5 Display Module", 32, 128, 128);
 
   // call static_display function
   static_display();
 }
 
 // MAIN LOOP
-void loop() {
+void loop() 
+{
   if (secondChanged()) ntp_clock();
   events();                                                // update NTP
   delay(100);
